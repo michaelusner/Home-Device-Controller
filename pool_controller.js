@@ -101,8 +101,39 @@ module.exports = {
             console.log(obj)
             res.send(obj)
         });
+    },
+    setAll: function (state, res) {
+        features  = ['spa', 'poolLight', 'spaLight']
+        logger.info('Setting  spa to ' + state)
+        sendCommand('spa', state, function(obj) {
+            console.log(obj)
+            if (obj.spa != stateStr[state]) {
+                logger.error("Failed to set spa state to " + state)
+                res.status(400).send("Failed to set spa state to " + state)
+            } else {
+                    sendCommand('spaLight', state, function(obj) {
+                    console.log(obj)
+                    if (obj.spaLight != stateStr[state]) {
+                        logger.error("Failed to set spa light state to " + state)
+                        res.statis(400).send("Failed to set spa light state to " + state)
+                    } else {
+                        sendCommand('poolLight', state, function(obj) {
+                            console.log(obj)
+                            if (obj.poolLight != stateStr[state]) {
+                                logger.error("Failed to set pool light state to " + state)
+                                res.status(400).send("Failed to set pool light state to " + state)
+                            } else {
+                                eventEmitter.once('poolStatus', function (obj) {
+                                    res.send(obj)
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
-};
+}
 
 var sendCommand = function(sFeature, sState, callback) {
     iFeature = featureStr[sFeature]

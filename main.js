@@ -22,9 +22,18 @@ app.get('/pool', function (req, res) {
 app.post('/pool', function (req, res) {
     logger.info("Feature: " + req.body.feature)
     logger.info("State: " + req.body.state)
-    pool_controller.setFeature(req.body.feature, req.body.state, res)
+    if (typeof req.body.feature == 'undefined') {
+        logger.error('Unknown feature ' + req.body.feature)
+        res.status(400).send('Unknown feature ' + req.body.feature)
+    } else if (typeof req.body.feature == 'undefined') {
+        res.status(400).send('Unknown state ' + req.body.state)
+    } else if (req.body.feature == 'all') {
+        pool_controller.setAll(req.body.state, res)
+    } else {
+        pool_controller.setFeature(req.body.feature, req.body.state, res)
+    }
  });
-
+ 
 var server = app.listen(8081, function () {
     var host = '127.0.0.1'
     var port = server.address().port
