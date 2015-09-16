@@ -2,6 +2,8 @@ This is the first attempt at using node.js as a controller for my home automatio
 I started with a simple function to connect to the Yamaha RX650 but have made the best progress on the Pentair pool controlling features.
 There is NO UI for this project.  It's meant to be run as a simple REST interface to the included modules.
 
+Note that you will need some kind of interface to your Pentair RS485 bus.
+
 Also note that there is no security currently implemented.  It's designed to run on a home network at this point, but I will eventually expand it so I can open a port on my router and control remotely.  
 
 If you provide your pushbullet API key and a device name, you will be able to get notifications in the event that 1) your pool/spa is on but 2) your pump is not running.  This indicates that the pump has stopped due to air suction etc.
