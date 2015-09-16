@@ -1,12 +1,13 @@
+var PushBullet = require('pushbullet')
+var pusher = new PushBullet('<your key>')
+var device = 'udvLUsjAAbMkeA0a'
 var SerialPort = require("serialport").SerialPort
 var events = require('events');
 var logger = require('./log');
 
-
 var eventEmitter = new events.EventEmitter();
 
 var COM = 'COM6'
-
 
 const state = {
     OFF: 0,
@@ -35,6 +36,12 @@ const packetFields = {
     EQUIP2: 7,
     WATER_TEMP: 18,
     AIR_TEMP: 22
+}
+
+const pumpPacketFields = {
+    POWER: 4,
+    WATTS: 7,
+    RPM: 9
 }
 
 const ctrl = {
@@ -88,8 +95,13 @@ const strFeature = {
 }
 
 module.exports = {
-    getStatus: function (res) {
+    getPoolStatus: function (res) {
         eventEmitter.once('poolStatus', function (obj) {
+            res.send(obj)
+        });
+    },
+    getPumpStatus: function (res) {
+        eventEmitter.once('pumpStatus', function (obj) {
             res.send(obj)
         });
     },
@@ -115,7 +127,7 @@ module.exports = {
                     console.log(obj)
                     if (obj.spaLight != stateStr[state]) {
                         logger.error("Failed to set spa light state to " + state)
-                        res.statis(400).send("Failed to set spa light state to " + state)
+                        res.status(400).send("Failed to set spa light state to " + state)
                     } else {
                         sendCommand('poolLight', state, function(obj) {
                             console.log(obj)
@@ -123,8 +135,16 @@ module.exports = {
                                 logger.error("Failed to set pool light state to " + state)
                                 res.status(400).send("Failed to set pool light state to " + state)
                             } else {
-                                eventEmitter.once('poolStatus', function (obj) {
-                                    res.send(obj)
+                                sendCommand('blower', state, function(obj) {
+                                    console.log(obj)
+                                    if (obj.blower != stateStr[state]) {
+                                        logger.error("Failed to set blower state to " + state)
+                                        res.status(400).send("Failed to set blower state to " + state)
+                                    } else {
+                                        eventEmitter.once('poolStatus', function (obj) {
+                                            res.send(obj)
+                                        });
+                                    }
                                 });
                             }
                         });
@@ -134,6 +154,22 @@ module.exports = {
         });
     }
 }
+
+function checkPump() {
+    eventEmitter.once('poolStatus', function (pool) {
+        eventEmitter.once('pumpStatus', function (pump) {
+            if ((pool.pool == 1 || pool.spa == 1) && (pump.power == 0 || pump.rpm == 0)) {
+                console.log("PROBLEM!!")
+                pusher.note(device, 'Pool Alert', 'Pool or spa is on but pump is not running!!', function(error, response) {
+                    console.log(error)
+                    console.log(response)
+                });
+            }
+        });
+    });
+}
+
+check = setInterval(function() { checkPump() }, 5*60*1000)
 
 var sendCommand = function(sFeature, sState, callback) {
     iFeature = featureStr[sFeature]
@@ -183,8 +219,10 @@ serialPort.open(function (error) {
                 for (var i=start; i<data.length; i++) {
                     strData += data[i] + ' '
                 }
-                if (start != null && data[start + packetFields.DATASIZE] == 29) {
-                    
+                if (start != null) {
+                    //console.log()
+                    //console.log('From: ' + ctrlString[data[start + packetFields.FROM]])
+                    //console.log('To: ' + ctrlString[data[start + packetFields.DEST]])
                     if (data[start + packetFields.FROM] == ctrl.MAIN && data[start + packetFields.DEST] == ctrl.BROADCAST) {
                         equip1 = data[start + packetFields.EQUIP1]
                         equip2 = data[start + packetFields.EQUIP2]
@@ -192,7 +230,8 @@ serialPort.open(function (error) {
                             time: data[start + packetFields.HOUR] + ':' + data[start + packetFields.MIN],
                             spa: equip1 & 1,
                             cleaner: (equip1 & 2) >> 1,
-                            airBlower: (equip1 & 4) >> 2,
+                            blower: (equip1 & 4) >> 2,
+                            blower: (equip1 & 4) >> 2,
                             spaLight: (equip1 & 8) >> 3,
                             poolLight: (equip1 & 16) >> 4,
                             pool: (equip1 & 32) >> 5,
@@ -204,7 +243,29 @@ serialPort.open(function (error) {
                         }
                         eventEmitter.emit('poolStatus', status);
                     }
-  
+                    // Pump packet
+                    else if (data[start + packetFields.FROM] == ctrl.PUMP1 && data[start + packetFields.DEST] == ctrl.MAIN && data[start + packetFields.ACTION] == 7){
+                        var status = {
+                            power: null,
+                            watts: null,
+                            rpm: null
+                        }
+                        //console.log('start: ' + start)
+                        myStr = ""
+                        for (var i=start; i<data.length; i++) {
+                            myStr += data[i] + ' '
+                        }
+                        //console.log(myStr)
+                        
+                        status.watts = (data[start+pumpPacketFields.WATTS] * 256) + data[start+pumpPacketFields.WATTS + 1]
+                        status.rpm = (data[start+pumpPacketFields.RPM] * 256) + data[start+pumpPacketFields.RPM + 1]
+                        if (data[start + pumpPacketFields.POWER] == 10) {
+                            status.power = 1
+                        } else {
+                            status.power = 0
+                        }
+                        eventEmitter.emit('pumpStatus', status);
+                    }
                 }
             }
         });
