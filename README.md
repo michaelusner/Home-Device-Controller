@@ -59,6 +59,8 @@ Usage:
 
 TODO:
 * Use the async.retry function to retry failed requests (though it seems reliable enough for now as is)
+    ex: If a request is issued to turn on the pool, but it doesn't turn on: try again.
+    I don't know if this is really a problem since I switched to node.js from Python (where this happened a lot)
 * Better event/alert handling
 * Security for controlling remotely
 * Android app?
