@@ -47,14 +47,14 @@ app.get('/pump', function (req, res) {
 // Payload:
 // {    
 //      "feature": <feature>,
-//      "status": 0(off) or 1(on)
+//      "status": "on" or "off"
 // }
 // Valid feature strings are: 
 // "spa", "cleaner", "blower", "spaLight", "poolLight", "pool", "waterFeature", "spillway", "aux7"
 // Example payload to turn pool on:
 // {    
 //      "feature": "pool",
-//      "status": 1
+//      "status": "on"
 // }
 app.post('/pool', function (req, res) {
     logger.info("Feature: " + req.body.feature)
@@ -75,6 +75,6 @@ app.post('/pool', function (req, res) {
 var server = app.listen(port, function () {
     var host = '127.0.0.1'
     var port = server.address().port
-    logger.info("Example app listening at http://%s:%s", host, port)
+    logger.info("Home-Device-Controller listening at http://%s:%s", host, port)
 })
 
