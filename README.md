@@ -59,5 +59,7 @@ Usage:
 
 TODO:
 * Use the async.retry function to retry failed requests (though it seems reliable enough for now as is)
+* Better event/alert handling
 * Security for controlling remotely
 * Android app?
+* Better modularity
