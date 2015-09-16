@@ -2,6 +2,8 @@ This is the first attempt at using node.js as a controller for my home automatio
 I started with a simple function to connect to the Yamaha RX650 but have made the best progress on the Pentair pool controlling features.
 There is NO UI for this project.  It's meant to be run as a simple REST interface to the included modules.
 
+Also note that there is no security currently implemented.  It's designed to run on a home network at this point, but I will eventually expand it so I can open a port on my router and control remotely.  
+
 Example:
   To turn on pool light:
   
