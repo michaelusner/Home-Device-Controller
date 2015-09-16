@@ -1,5 +1,5 @@
 This is the first attempt at using node.js as a controller for my home automation.
-I started with a simple function to connect to the Yamaha RX650.
+I started with a simple function to connect to the Yamaha RX650 but have made the best progress on the Pentair pool controlling features.
 
 Current package requirements:
     npm install express
