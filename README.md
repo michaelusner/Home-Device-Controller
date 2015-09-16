@@ -3,13 +3,13 @@ I started with a simple function to connect to the Yamaha RX650 but have made th
 There is NO UI for this project.  It's meant to be run as a simple REST interface to the included modules.
 
 Example:
-  To turn on pool lights:
+  To turn on pool light:
   
   HTTP POST
   
   Headers: Content-Type:application/json
   
-  Body: {"feature":"pool", "state": "on"}
+  Body: {"feature":"poolLight", "state": "on"}
   
   The response code indicates success/failure with either a 200 (success) or 400 (failure)
   
