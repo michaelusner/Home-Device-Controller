@@ -51,6 +51,8 @@ Current package requirements:
     
     >npm install xml2js
     
+    >npm install winston
+    
 
 Usage:
 * install node.js and the packages
