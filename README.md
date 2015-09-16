@@ -4,6 +4,7 @@ There is NO UI for this project.  It's meant to be run as a simple REST interfac
 
 Example:
   To turn on pool lights:
+  
   HTTP POST
   Headers: Content-Type:application/json
   Body: {"feature":"pool", "state": "on"}
