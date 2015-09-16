@@ -4,6 +4,9 @@ There is NO UI for this project.  It's meant to be run as a simple REST interfac
 
 Also note that there is no security currently implemented.  It's designed to run on a home network at this point, but I will eventually expand it so I can open a port on my router and control remotely.  
 
+If you provide your pushbullet API key and a device name, you will be able to get notifications in the event that 1) your pool/spa is on but 2) your pump is not running.  This indicates that the pump has stopped due to air suction etc.
+
+
 Example:
   To turn on pool light:
   
@@ -51,3 +54,10 @@ Usage:
 * install node.js and the packages
 * Execute >node main.js
 * GET and POST according to the descriptions in the main.js file
+
+
+
+TODO:
+* Use the async.retry function to retry failed requests (though it seems reliable enough for now as is)
+* Security for controlling remotely
+* Android app?
