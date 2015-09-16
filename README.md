@@ -35,10 +35,15 @@ Example:
     
 
 Current package requirements:
+
 (node.js - of course)
-    npm install express
-    npm install request
-    npm install xml2js
+
+    >npm install express
+    
+    >npm install request
+    
+    >npm install xml2js
+    
 
 Usage:
 * install node.js and the packages
