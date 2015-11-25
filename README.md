@@ -2,14 +2,28 @@ This is the first attempt at using node.js as a controller for my home automatio
 I started with a simple function to connect to the Yamaha RX650 but have made the best progress on the Pentair pool controlling features.
 There is NO UI for this project.  It's meant to be run as a simple REST interface to the included modules.
 
+Note that you will need some kind of interface to your Pentair RS485 bus.  I use an RS485/RS232 converter plugged into my serial port.
+
+Also note that there is no security currently implemented.  It's designed to run on a home network at this point, but I will eventually expand it so I can open a port on my router and control remotely.  
+
+If you provide your pushbullet API key and a device name, you will be able to get notifications in the event that 1) your pool/spa is on but 2) your pump is not running.  This indicates that the pump has stopped due to air suction etc.
+
+
 Example:
-  To turn on pool lights:
+  To turn on pool light:
+  
   HTTP POST
+  
   Headers: Content-Type:application/json
-  Body: {"feature":"pool", "state": "on"}
+  
+  Body: {"feature":"poolLight", "state": "on"}
+  
   The response code indicates success/failure with either a 200 (success) or 400 (failure)
+  
   The response body will contain a JSON representation of the current state of all pool features
+  
   Example response:
+  
   200 OK
   {
     time: "15:51"
@@ -28,12 +42,30 @@ Example:
     
 
 Current package requirements:
+
 (node.js - of course)
-    npm install express
-    npm install request
-    npm install xml2js
+
+    >npm install express
+    
+    >npm install request
+    
+    >npm install xml2js
+    
+    >npm install winston
+    
 
 Usage:
 * install node.js and the packages
 * Execute >node main.js
 * GET and POST according to the descriptions in the main.js file
+
+
+
+TODO:
+* Use the async.retry function to retry failed requests (though it seems reliable enough for now as is)
+    ex: If a request is issued to turn on the pool, but it doesn't turn on: try again.
+    I don't know if this is really a problem since I switched to node.js from Python (where this happened a lot)
+* Better event/alert handling
+* Security for controlling remotely
+* Android app?
+* Better modularity
