@@ -4,6 +4,7 @@ var device = 'udvLUsjAAbMkeA0a'
 var SerialPort = require("serialport").SerialPort
 var events = require('events');
 var logger = require('./log');
+var sleep = require('sleep')
 
 var eventEmitter = new events.EventEmitter();
 
@@ -95,9 +96,22 @@ const strFeature = {
 }
 
 module.exports = {
-    getPoolStatus: function (res) {
+    getPoolStatus: function (callback) {
+        logger.info("Retrieving status...")
         eventEmitter.once('poolStatus', function (obj) {
-            res.send(obj)
+            return callback({
+                "time": obj.time,
+                "waterTemp": obj.waterTemp,
+                "airTemp": obj.airTemp,
+                "pool": obj.pool,
+                "spa": obj.spa,
+                "blower": obj.blower,
+                "poolLight": obj.poolLight,
+                "spaLight": obj.spaLight,
+                "cleaner": obj.cleaner,
+                "spillway": obj.spillway,
+                "waterFeature": obj.waterFeature
+            })
         });
     },
     getPumpStatus: function (res) {
@@ -105,14 +119,32 @@ module.exports = {
             res.send(obj)
         });
     },
-    setFeature: function (feature, state, res) {
+    setFeature: function (feature, state, callback) {
         logger.info('setFeature: feature=' + feature)
         logger.info('setFeature: state=' + state)
         return sendCommand(feature, state, function(obj) {
             console.log('sendCommand returned:')
             console.log(obj)
-            res.send(obj)
+            callback(obj)
         });
+    },
+    setLights: function(state, res) {
+        sendCommand('spaLight', state, function(obj) {
+            logger.info(obj)
+            if (stateStr[obj.spaLight] != stateStr[state]) {
+                logger.error("Failed to set spa light state to " + stateStr[state])
+                res.status(400).send("Failed to set spa light state to " + state)
+            } else {
+                sendCommand('poolLight', state, function(obj) {
+                    console.log(obj)
+                    if (stateStr[obj.poolLight] != stateStr[state]) {
+                        logger.error("Failed to set pool light state to " + state)
+                        res.status(400).send("Failed to set pool light state to " + state)
+                    }
+                })
+            }
+            res.status(200).send("Set pool and spa light to " + state)
+        })
     },
     setAll: function (state, res) {
         features  = ['spa', 'poolLight', 'spaLight']
@@ -228,16 +260,16 @@ serialPort.open(function (error) {
                         equip2 = data[start + packetFields.EQUIP2]
                         var status = {
                             time: data[start + packetFields.HOUR] + ':' + data[start + packetFields.MIN],
-                            spa: equip1 & 1,
-                            cleaner: (equip1 & 2) >> 1,
-                            blower: (equip1 & 4) >> 2,
-                            blower: (equip1 & 4) >> 2,
-                            spaLight: (equip1 & 8) >> 3,
-                            poolLight: (equip1 & 16) >> 4,
-                            pool: (equip1 & 32) >> 5,
-                            waterFeature: (equip1 & 64) >> 6,
-                            spillway: (equip1 & 128) >> 7,
-                            aux7: equip2 & 1,
+                            spa: equip1 & 1?"on":"off",
+                            cleaner: (equip1 & 2) >> 1?"on":"off",
+                            blower: (equip1 & 4) >> 2?"on":"off",
+                            blower: (equip1 & 4) >> 2?"on":"off",
+                            spaLight: (equip1 & 8) >> 3?"on":"off",
+                            poolLight: (equip1 & 16) >> 4?"on":"off",
+                            pool: (equip1 & 32) >> 5?"on":"off",
+                            waterFeature: (equip1 & 64) >> 6?"on":"off",
+                            spillway: (equip1 & 128) >> 7?"on":"off",
+                            aux7: equip2 & 1?"on":"off",
                             waterTemp: data[start + packetFields.WATER_TEMP],
                             airTemp: data[start + packetFields.AIR_TEMP]
                         }

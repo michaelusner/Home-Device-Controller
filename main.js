@@ -1,14 +1,84 @@
 var bodyParser = require('body-parser')
 var express = require('express')
 var request = require('request')
+var schedule = require('node-schedule')
+var async = require('async')
 var parseString = require('xml2js').parseString;
 var pool_controller = require('./pool_controller')
+var harmony = require('harmonyhubjs-client')
+var sleep = require('sleep');
 var logger = require('./log')
 var app = express()
 var port = 8081
+var harmonyHub = 'harmonyhub.usner.net'
+var tunerName = 'tuner.usner.net'
+var tuner = require('./yamaha_controller')
+tuner.connect(tunerName)
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json());
+
+app.get('/harmony/activities', function (req, res) {
+    ret = ''
+    harmony(harmonyHub).then(function(harmonyClient) {
+            harmonyClient.getActivities().then(function(activities) {
+            activities.some(function(activity) {
+                console.log(activity.label)
+                ret += activity.label + '<br/>'
+            })
+            res.send(ret)
+        })
+    })
+})
+
+app.get('/harmony/plex', function (req, res) {
+    harmony(harmonyHub)
+    .then(function(harmonyClient) {
+        harmonyClient.getActivities()
+        .then(function(activities) {
+            activities.some(function(activity) {
+                if (activity.label === 'Plex') {
+                    console.log('Watch Plex...')
+                    var id = activity.id;
+                    tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
+                    harmonyClient.startActivity(id)
+                    harmonyClient.end()
+                    res.sendStatus(200)
+                }
+            });
+        });
+    });
+})
+
+app.get('/harmony/tv', function (req, res) {
+    harmony(harmonyHub)
+    .then(function(harmonyClient) {
+        harmonyClient.getActivities()
+        .then(function(activities) {
+            activities.some(function(activity) {
+                if (activity.label === 'Watch TV') {
+                    console.log('Watch TV...')
+                    var id = activity.id;
+                    tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
+                    harmonyClient.startActivity(id)
+                    harmonyClient.end()
+                    res.sendStatus(200)
+                }
+            });
+        });
+    });
+})
+
+
+app.get('/harmony/off', function (req, res) {
+    harmony(harmonyHub).then(function(harmonyClient) {
+        console.log('Turning Harmony off...')
+        harmonyClient.turnOff()
+        harmonyClient.end()
+        res.sendStatus(200)            
+    })
+})
+
 
 // Returns a JSON encoded body containing the status of all pool components
 // Example:
@@ -27,10 +97,11 @@ app.use(bodyParser.json());
 //        "waterTemp":85,
 //        "airTemp":92
 //    }
-app.get('/pool', function (req, res) {
-    logger.info("Getting pool status")
-    pool_controller.getPoolStatus(res)
-});
+
+//app.get('/pool', function (req, res) {
+//    logger.info("Getting pool status")
+//    pool_controller.getPoolStatus(res)
+//});
 // Returns a JSON encoded body containing the pump status
 // Note that this only supports one pump at the moment but could easily be expanded
 app.get('/pump', function (req, res) {
@@ -44,33 +115,126 @@ app.get('/pump', function (req, res) {
 //  POST
 // Headers: 
 //  Content-Type: application/json
-// Payload:
-// {    
-//      "feature": <feature>,
-//      "status": "on" or "off"
-// }
+// Parameters:
+//      feature=status
 // Valid feature strings are: 
 // "spa", "cleaner", "blower", "spaLight", "poolLight", "pool", "waterFeature", "spillway", "aux7"
-// Example payload to turn pool on:
+// Example line to turn pool and lights on:
 // {    
-//      "feature": "pool",
-//      "status": "on"
+//      http://localhost:80901/pool?pool=on&poolLight=on&spaLight=on
 // }
-app.post('/pool', function (req, res) {
-    logger.info("Feature: " + req.body.feature)
-    logger.info("State: " + req.body.state)
-    if (typeof req.body.feature == 'undefined') {
-        logger.error('Unknown feature ' + req.body.feature)
-        res.status(400).send('Unknown feature ' + req.body.feature)
-    } else if (typeof req.body.feature == 'undefined') {
-        res.status(400).send('Unknown state ' + req.body.state)
-    } else if (req.body.feature == 'all') {
-        pool_controller.setAll(req.body.state, res)
-    } else {
-        pool_controller.setFeature(req.body.feature, req.body.state, res)
+app.get('/pool', function (req, res) {
+    console.log(req.query)
+    funcs = []
+    params = []
+    for (var param in req.query) {
+        params.push(param)
     }
- });
+    console.log(params)
+    
+    async.eachSeries(params, function(param, callback) {
+        console.log("***", param, ":", req.query[param])
+        pool_controller.setFeature(param, req.query[param], function(obj) { 
+            console.log(obj)
+            sleep.sleep(1)
+            callback()
+        })
+    }, function(err) {
+        if (err) {
+            console.log("error!!!")
+            return res.status(500).send("Failure")
+        }
+        console.log("****************")
+        return pool_controller.getPoolStatus(function(obj) { res.status(200).send(obj) })
+    })
+ })
+ 
+app.get('/pool/lights/on', function (req, res) {
+    pool_controller.setLights('on', res)
+})
+ 
+ app.get('/pool/lights/off', function (req, res) {
+    pool_controller.setLights('off', res)
+})
+ 
+ app.get('/pool/status', function (req, res) {
+    pool_controller.getPoolStatus(function(obj) {
+            logger.info(obj)
+            res.status(200).send(obj)
+    })
+ })
+ 
+ app.get('/tuner/patio/pandora', function (req, res) {
+     console.log('Patio tuner on: Pandora')
+     error = ""
+     logger.info("Tuner power on")     
+     tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>On</Power></Power_Control></Zone_2></YAMAHA_AV>', function(result) {
+         if (!result) error += "Failed to power on"
+     })
+     logger.info("Tuner input Pandora")
+     tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Input><Input_Sel>Pandora</Input_Sel></Input></Zone_2></YAMAHA_AV>', function(result) {
+        if (!result) error += 'Failed to set to Pandora'
+     })
+     logger.info("Tuner volume -28")
+     tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Volume><Lvl><Val>-28</Val><Exp>1</Exp><Unit>dB</Unit></Lvl></Volume></Zone_2></YAMAHA_AV>', function(result) {
+         if (!result) error += 'Failed to set volume level to -28'
+     })
+     logger.info("Tuner sleep 120")
+     tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Sleep>120 min</Sleep></Power_Control></Zone_2></YAMAHA_AV>', function(result) {
+         if (!result) error += 'Failed to set sleep timer'
+     })
+     if (error != '') {
+         logger.error("Failed to turn on patio")
+         res.status(500).send(error)
+     } else {
+        res.status(200).send("Patio tuner on: Pandora")
+     }
+ })
   
+app.get('/tuner/patio/off', function (req, res) {
+    console.log('Patio tuner off')
+    tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>', function(result) {
+        if (result) {
+            res.status(200).send("Patio tuner off")
+        } else {
+            res.status(500).send("Failed to turn patio tuner off")
+        }
+    })
+})
+
+app.get('/tuner/pandora/thumbup', function (req, res) {
+    console.log('Pandora thumb dup')
+    tuner.command('<YAMAHA_AV cmd="PUT"><Pandora><Play_Control><Feedback>Thumb Up</Feedback></Play_Control></Pandora></YAMAHA_AV>', function(result) {
+        if (result) {
+            res.status(200).send("Pandora thumb up")
+        } else {
+            res.status(500).send("Failed to Pandora thumb up")
+        }
+    })
+})
+
+app.get('/tuner/pandora/thumbdown', function (req, res) {
+    console.log('Pandora thumb dup')
+    tuner.command('<YAMAHA_AV cmd="PUT"><Pandora><Play_Control><Feedback>Thumb Down</Feedback></Play_Control></Pandora></YAMAHA_AV>', function(result) {
+        if (result) {
+            res.status(200).send("Pandora thumb down")
+        } else {
+            res.status(500).send("Failed to Pandora thumb down")
+        }
+    })
+})
+
+app.get('/tuner/pandora/next', function (req, res) {
+    console.log('Pandora next')
+    tuner.command('<YAMAHA_AV cmd="PUT"><Pandora><List_Control><Cursor>Sel</Cursor></List_Control></Pandora></YAMAHA_AV>', function(result) {
+        if (result) {
+            res.status(200).send("Pandora next")
+        } else {
+            res.status(500).send("Failed to Pandora next")
+        }
+    })
+})
+
 // the server entry point
 var server = app.listen(port, function () {
     var host = '127.0.0.1'
@@ -78,3 +242,10 @@ var server = app.listen(port, function () {
     logger.info("Home-Device-Controller listening at http://%s:%s", host, port)
 })
 
+
+// Turn off everything at midnight
+var j = schedule.scheduleJob('0 0 * * *', function(){
+    logger.info("Turning everything off!")
+    pool_controller.setAll('off', { send:function(res) { logger.info(res) } })
+    //tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
+});
