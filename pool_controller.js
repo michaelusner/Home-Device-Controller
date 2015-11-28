@@ -122,24 +122,24 @@ module.exports = {
     setFeature: function (feature, state, callback) {
         logger.info('setFeature: feature=' + feature)
         logger.info('setFeature: state=' + state)
-        return sendCommand(feature, state, function(obj) {
+        return sendCommand(feature, state, function(err, obj) {
             console.log('sendCommand returned:')
             console.log(obj)
-            callback(obj)
+            callback(err, obj)
         });
     },
     setLights: function(state, res) {
-        sendCommand('spaLight', state, function(obj) {
+        sendCommand('spaLight', state, function(err, obj) {
             logger.info(obj)
             if (stateStr[obj.spaLight] != stateStr[state]) {
                 logger.error("Failed to set spa light state to " + stateStr[state])
                 res.status(400).send("Failed to set spa light state to " + state)
             } else {
-                sendCommand('poolLight', state, function(obj) {
+                sendCommand('poolLight', state, function(err, obj) {
                     console.log(obj)
                     if (stateStr[obj.poolLight] != stateStr[state]) {
                         logger.error("Failed to set pool light state to " + state)
-                        res.status(400).send("Failed to set pool light state to " + state)
+                        res.status(400).send(obj)
                     }
                 })
             }
@@ -218,7 +218,7 @@ var sendCommand = function(sFeature, sState, callback) {
     serialPort.write(packet, function (err, bytesWritten) {
         logger.info("Wrote " + bytesWritten + " bytes to the serial port")
         eventEmitter.once('poolStatus', function (obj) {
-            return callback(obj)
+            return callback(null, obj)
         });
     });
 }

@@ -130,22 +130,14 @@ app.get('/pool', function (req, res) {
     for (var param in req.query) {
         params.push(param)
     }
-    console.log(params)
-    
-    async.eachSeries(params, function(param, callback) {
-        console.log("***", param, ":", req.query[param])
-        pool_controller.setFeature(param, req.query[param], function(obj) { 
-            console.log(obj)
-            sleep.sleep(1)
-            callback()
-        })
-    }, function(err) {
+
+    pool_controller.setFeature(param, req.query[param], function(err, obj) {
         if (err) {
-            console.log("error!!!")
-            return res.status(500).send("Failure")
+            res.status(500).send("Failed to set feature state", param, req.query[param])
+        } else {
+            console.log(obj)
+            res.status(200).send(obj)
         }
-        console.log("****************")
-        return pool_controller.getPoolStatus(function(obj) { res.status(200).send(obj) })
     })
  })
  
