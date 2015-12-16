@@ -40,7 +40,7 @@ app.get('/harmony/plex', function (req, res) {
                 if (activity.label === 'Plex') {
                     console.log('Watch Plex...')
                     var id = activity.id;
-                    tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
+                    //tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
                     harmonyClient.startActivity(id)
                     harmonyClient.end()
                     res.sendStatus(200)
@@ -59,7 +59,7 @@ app.get('/harmony/tv', function (req, res) {
                 if (activity.label === 'Watch TV') {
                     console.log('Watch TV...')
                     var id = activity.id;
-                    tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
+                    //tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
                     harmonyClient.startActivity(id)
                     harmonyClient.end()
                     res.sendStatus(200)
@@ -135,7 +135,6 @@ app.get('/pool', function (req, res) {
         if (err) {
             res.status(500).send("Failed to set feature state", param, req.query[param])
         } else {
-            console.log(obj)
             res.status(200).send(obj)
         }
     })
@@ -225,6 +224,10 @@ app.get('/tuner/pandora/next', function (req, res) {
             res.status(500).send("Failed to Pandora next")
         }
     })
+})
+
+app.get('/patio/off', function(req, res) {
+    pool_controller.setAll('off', res)
 })
 
 // the server entry point

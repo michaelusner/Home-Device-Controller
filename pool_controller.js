@@ -150,31 +150,34 @@ module.exports = {
         features  = ['spa', 'poolLight', 'spaLight']
         logger.info('Setting  spa to ' + state)
         sendCommand('spa', state, function(obj) {
-            console.log(obj)
-            if (obj.spa != stateStr[state]) {
+            if (obj.spa != state) {
                 logger.error("Failed to set spa state to " + state)
                 res.status(400).send("Failed to set spa state to " + state)
             } else {
                     sendCommand('spaLight', state, function(obj) {
                     console.log(obj)
-                    if (obj.spaLight != stateStr[state]) {
+                    if (obj.spaLight != state) {
                         logger.error("Failed to set spa light state to " + state)
                         res.status(400).send("Failed to set spa light state to " + state)
                     } else {
                         sendCommand('poolLight', state, function(obj) {
                             console.log(obj)
-                            if (obj.poolLight != stateStr[state]) {
+                            if (obj.poolLight != state) {
                                 logger.error("Failed to set pool light state to " + state)
                                 res.status(400).send("Failed to set pool light state to " + state)
                             } else {
                                 sendCommand('blower', state, function(obj) {
                                     console.log(obj)
-                                    if (obj.blower != stateStr[state]) {
+                                    if (obj.blower != state) {
                                         logger.error("Failed to set blower state to " + state)
                                         res.status(400).send("Failed to set blower state to " + state)
                                     } else {
                                         eventEmitter.once('poolStatus', function (obj) {
-                                            res.send(obj)
+                                            if (res.status) {
+                                                res.status(200).send(obj)
+                                            } else {
+                                                logger.info(obj)
+                                            }
                                         });
                                     }
                                 });
@@ -218,11 +221,22 @@ var sendCommand = function(sFeature, sState, callback) {
     serialPort.write(packet, function (err, bytesWritten) {
         logger.info("Wrote " + bytesWritten + " bytes to the serial port")
         eventEmitter.once('poolStatus', function (obj) {
-            return callback(null, obj)
+            return callback(err=null, obj={
+                "time": obj.time,
+                "waterTemp": obj.waterTemp,
+                "airTemp": obj.airTemp,
+                "pool": obj.pool,
+                "spa": obj.spa,
+                "blower": obj.blower,
+                "poolLight": obj.poolLight,
+                "spaLight": obj.spaLight,
+                "cleaner": obj.cleaner,
+                "spillway": obj.spillway,
+                "waterFeature": obj.waterFeature
+            })            
         });
     });
 }
-
 
 function dec2bin(dec){
     return (dec >>> 0).toString(2);
@@ -241,6 +255,7 @@ serialPort.open(function (error) {
             if (data.length > 1) {
                 len=data.length; 
                 start = null;
+                
                 // Locate the start of the packet message
                 for (var i=0; i < len; i++) {
                     if (data[i] == 255 && data[i+1] == 0 && data[i+2] == 255 && data[i+3] == 165) {
@@ -252,9 +267,6 @@ serialPort.open(function (error) {
                     strData += data[i] + ' '
                 }
                 if (start != null) {
-                    //console.log()
-                    //console.log('From: ' + ctrlString[data[start + packetFields.FROM]])
-                    //console.log('To: ' + ctrlString[data[start + packetFields.DEST]])
                     if (data[start + packetFields.FROM] == ctrl.MAIN && data[start + packetFields.DEST] == ctrl.BROADCAST) {
                         equip1 = data[start + packetFields.EQUIP1]
                         equip2 = data[start + packetFields.EQUIP2]
@@ -282,12 +294,11 @@ serialPort.open(function (error) {
                             watts: null,
                             rpm: null
                         }
-                        //console.log('start: ' + start)
+
                         myStr = ""
                         for (var i=start; i<data.length; i++) {
                             myStr += data[i] + ' '
                         }
-                        //console.log(myStr)
                         
                         status.watts = (data[start+pumpPacketFields.WATTS] * 256) + data[start+pumpPacketFields.WATTS + 1]
                         status.rpm = (data[start+pumpPacketFields.RPM] * 256) + data[start+pumpPacketFields.RPM + 1]
