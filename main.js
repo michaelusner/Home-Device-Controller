@@ -139,6 +139,25 @@ app.get('/pool', function (req, res) {
         }
     })
  })
+
+var callback = 'http://192.168.1.10:39500/';
+var x = 1
+setInterval(function() {
+    pool_controller.getPoolStatus(function(obj) {
+        logger.info(obj)
+        obj.waterTemp = x
+        obj.airTemp = x+5
+        x += 1
+        request.post({
+            localAddress: '192.168.1.2',
+            url: callback,
+            json: obj
+        }, function (error, resp) {
+            console.log('response', error, resp.statusCode);
+        })
+    })
+}, 5000)
+   
  
 app.get('/pool/lights/on', function (req, res) {
     pool_controller.setLights('on', res)
