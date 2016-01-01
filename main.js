@@ -15,6 +15,8 @@ var tunerName = 'tuner.usner.net'
 var tuner = require('./yamaha_controller')
 tuner.connect(tunerName)
 
+//E8DE27067F01
+
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json());
 
@@ -144,19 +146,20 @@ var callback = 'http://192.168.1.10:39500/';
 var x = 1
 setInterval(function() {
     pool_controller.getPoolStatus(function(obj) {
-        logger.info(obj)
-        obj.waterTemp = x
-        obj.airTemp = x+5
-        x += 1
+        //obj.waterTemp = x
+        //obj.airTemp = x+5
+        //x += 1
         request.post({
             localAddress: '192.168.1.2',
             url: callback,
             json: obj
         }, function (error, resp) {
-            console.log('response', error, resp.statusCode);
+            if (error != null) {
+                console.log('response', error, resp);
+            }
         })
     })
-}, 5000)
+}, 10000)
    
  
 app.get('/pool/lights/on', function (req, res) {
@@ -255,11 +258,3 @@ var server = app.listen(port, function () {
     var port = server.address().port
     logger.info("Home-Device-Controller listening at http://%s:%s", host, port)
 })
-
-
-// Turn off everything at midnight
-var j = schedule.scheduleJob('0 0 * * *', function(){
-    logger.info("Turning everything off!")
-    pool_controller.setAll('off', { send:function(res) { logger.info(res) } })
-    //tuner.command('<YAMAHA_AV cmd="PUT"><Zone_2><Power_Control><Power>Standby</Power></Power_Control></Zone_2></YAMAHA_AV>')
-});

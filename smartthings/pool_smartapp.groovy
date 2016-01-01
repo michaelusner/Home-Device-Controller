@@ -1,5 +1,5 @@
 /**
- *  Spa Temperature
+ *  Pool Temperature Alert
  *
  *  Copyright 2015 Michael Usner
  *
@@ -13,6 +13,7 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+import groovy.time.*
 definition(
     name: "Spa Temperature",
     namespace: "michaelusner",
@@ -26,13 +27,19 @@ definition(
 
 preferences {
     section("Choose a temperature sensor... "){
-		input "sensor", "capability.temperatureMeasurement", title: "Sensor"
+		input "waterTemp", "capability.temperatureMeasurement", title: "Water Temperature"
+        input "maxTemp", "number", title: "Max Temp?",   required: true
+        input "spa", "capability.switch", multiple: true, required: false, title: "Spa Switch"
 	}
+    section("Send Notifications?") {
+        input "sendPush", "bool", required: false,
+              title: "Send Push Notification when spa reaches temperature?"
+    }
 }
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-
+	
 	initialize()
 }
 
@@ -44,19 +51,60 @@ def updated() {
 }
 
 def initialize() {
-	subscribe(sensor, "waterTemp", waterTemperatureHandler)
-    subscribe(sensor, "airTemp", airTemperatureHandler)
-    
+	state.messageSent = null
+	subscribe(waterTemp, "waterTemp", waterTemperatureHandler)
+    subscribe(airTemp, "airTemp", airTemperatureHandler)
+    subscribe(spa, "spa", spaHandler)
+    subscribe(pool, "pool", poolHandler)
+}
+
+def poolHandler(evt) {
+	log.debug("Pool handler!")
+    log.debug(evt.value)
+}
+
+def spaHandler(evt) {
+	log.debug("Spa handler!")
+    log.debug("state.messageSent = " + state.messageSent)
+
+    def latest = spa[0].latestValue("spa")
+    if (latest == "on") {
+    	log.debug("Spa On")
+        if (evt.isStateChange())
+        	state.messageSent = false
+    } else {
+    	log.debug("Spa Off")
+        state.messageSent = false
+    }
 }
 
 def waterTemperatureHandler(evt)
 {
-	log.debug('Water temperatureHandler running')
-	log.debug "$evt.value"
+	def temperature = evt.value.toInteger()
+    def spaState = getSpaState()
+
+	log.debug('Water temperature changed to ' + temperature)
+    log.debug("maxTemp = " + maxTemp)
+    log.debug("Spa state: " + spaState)
+
+    if (temperature >= maxTemp && spaState == "on") {
+    	log.debug("Spa temperature is " + evt.value)
+        log.debug("Message Sent: " + state.messageSent)
+        if (state.messageSent == false || state.messageSent == null) {
+        	log.debug("Sending message that spa is ready")
+        	sendPush("Spa is ready!")
+        	state.messageSent = true
+        }       
+  	}
 }
 
 def airTemperatureHandler(evt)
 {
-	log.debug('Air temperatureHandler running')
-	log.debug "$evt.value"
+	log.debug('Air temperature changed to ' + evt.value)
+}
+
+def getSpaState() {
+	// get the spa state
+    def latest = spa[0].latestValue("spa")
+    return latest
 }

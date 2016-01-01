@@ -97,7 +97,6 @@ const strFeature = {
 
 module.exports = {
     getPoolStatus: function (callback) {
-        logger.info("Retrieving status...")
         eventEmitter.once('poolStatus', function (obj) {
             return callback({
                 "time": obj.time,
@@ -210,7 +209,11 @@ var sendCommand = function(sFeature, sState, callback) {
     iFeature = featureStr[sFeature]
     iState = stateStr[sState]
     logger.info("Setting " + sFeature + " to " + sState)
-    packet = [00, 255, 165, 31, ctrl.MAIN, ctrl.REMOTE, 134, 2, iFeature, iState]
+    if (sFeature == "poolTemp") {
+        packet = [00, 255, 165, 31, ctrl.MAIN, ctrl.REMOTE, 134, 4, sState, 97, 5, 0]
+    } else {
+        packet = [00, 255, 165, 31, ctrl.MAIN, ctrl.REMOTE, 134, 2, iFeature, iState]
+    }
     checksum = 0
     for (var i=2; i < packet.length; i++) {
         checksum += packet[i]
@@ -266,6 +269,7 @@ serialPort.open(function (error) {
                 for (var i=start; i<data.length; i++) {
                     strData += data[i] + ' '
                 }
+                logger.info(strData)
                 if (start != null) {
                     if (data[start + packetFields.FROM] == ctrl.MAIN && data[start + packetFields.DEST] == ctrl.BROADCAST) {
                         equip1 = data[start + packetFields.EQUIP1]
