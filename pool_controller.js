@@ -4,11 +4,10 @@ var device = 'udvLUsjAAbMkeA0a'
 var SerialPort = require("serialport").SerialPort
 var events = require('events');
 var logger = require('./log');
-var sleep = require('sleep')
 
 var eventEmitter = new events.EventEmitter();
 
-var COM = 'COM6'
+var COM = 'COM3'
 
 const state = {
     OFF: 0,
@@ -269,7 +268,7 @@ serialPort.open(function (error) {
                 for (var i=start; i<data.length; i++) {
                     strData += data[i] + ' '
                 }
-                logger.info(strData)
+                //logger.info(strData)
                 if (start != null) {
                     if (data[start + packetFields.FROM] == ctrl.MAIN && data[start + packetFields.DEST] == ctrl.BROADCAST) {
                         equip1 = data[start + packetFields.EQUIP1]
@@ -289,7 +288,11 @@ serialPort.open(function (error) {
                             waterTemp: data[start + packetFields.WATER_TEMP],
                             airTemp: data[start + packetFields.AIR_TEMP]
                         }
-                        eventEmitter.emit('poolStatus', status);
+                        // if the time field is whacked, don't send any data.
+                        d = status.time.split(":")
+                        if (parseInt(d[0]) < 24 && parseInt(d[1]) < 60) {
+                            eventEmitter.emit('poolStatus', status)
+                        }
                     }
                     // Pump packet
                     else if (data[start + packetFields.FROM] == ctrl.PUMP1 && data[start + packetFields.DEST] == ctrl.MAIN && data[start + packetFields.ACTION] == 7){

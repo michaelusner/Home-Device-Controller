@@ -6,7 +6,6 @@ var async = require('async')
 var parseString = require('xml2js').parseString;
 var pool_controller = require('./pool_controller')
 var harmony = require('harmonyhubjs-client')
-var sleep = require('sleep');
 var logger = require('./log')
 var app = express()
 var port = 8081
@@ -127,12 +126,10 @@ app.get('/pump', function (req, res) {
 // }
 app.get('/pool', function (req, res) {
     console.log(req.query)
-    funcs = []
     params = []
     for (var param in req.query) {
         params.push(param)
     }
-
     pool_controller.setFeature(param, req.query[param], function(err, obj) {
         if (err) {
             res.status(500).send("Failed to set feature state", param, req.query[param])
@@ -144,24 +141,42 @@ app.get('/pool', function (req, res) {
 
 var callback = 'http://192.168.1.10:39500/';
 var x = 1
+var state = {}
 setInterval(function() {
     pool_controller.getPoolStatus(function(obj) {
         //obj.waterTemp = x
         //obj.airTemp = x+5
         //x += 1
-        request.post({
-            localAddress: '192.168.1.2',
-            url: callback,
-            json: obj
-        }, function (error, resp) {
-            if (error != null) {
-                console.log('response', error, resp);
-            }
-        })
+        
+        // if the time is valid and there's been a state change
+        
+        if (state.waterTemp != obj.waterTemp ||        
+                state.waterTemp != obj.waterTemp ||
+                state.airTemp != obj.airTemp ||
+                state.pool != obj.pool ||
+                state.spa != obj.spa ||
+                state.blower != obj.blower ||
+                state.poolLight != obj.poolLight ||
+                state.spaLight != obj.spaLight ||
+                state.cleaner != obj.cleaner ||
+                state.spillway != obj.spillway ||
+                state.waterFeature  != obj.waterFeature) {
+            state = obj
+            logger.info("Sending status")
+            logger.info(obj)
+            request.post({
+                localAddress: '192.168.1.2',
+                url: callback,
+                json: obj
+            }, function (error, resp) {
+                if (error != null) {
+                    console.log('response', error, resp);
+                }
+            })
+        }
     })
 }, 10000)
    
- 
 app.get('/pool/lights/on', function (req, res) {
     pool_controller.setLights('on', res)
 })
@@ -169,7 +184,7 @@ app.get('/pool/lights/on', function (req, res) {
  app.get('/pool/lights/off', function (req, res) {
     pool_controller.setLights('off', res)
 })
- 
+
  app.get('/pool/status', function (req, res) {
     pool_controller.getPoolStatus(function(obj) {
             logger.info(obj)
