@@ -70,11 +70,13 @@ def spaHandler(evt) {
     def latest = spa[0].latestValue("spa")
     if (latest == "on") {
     	log.debug("Spa On")
-        if (evt.isStateChange())
+        if (evt.isStateChange()) {
+        	log.debug("State change detected")
         	state.messageSent = false
+        }
     } else {
     	log.debug("Spa Off")
-        state.messageSent = false
+        state.messageSent = null
     }
 }
 
@@ -90,11 +92,11 @@ def waterTemperatureHandler(evt)
     if (temperature >= maxTemp && spaState == "on") {
     	log.debug("Spa temperature is " + evt.value)
         log.debug("Message Sent: " + state.messageSent)
-        if (state.messageSent == false || state.messageSent == null) {
+        if (state.messageSent == false) {
         	log.debug("Sending message that spa is ready")
         	sendPush("Spa is ready!")
         	state.messageSent = true
-        }       
+        }
   	}
 }
 

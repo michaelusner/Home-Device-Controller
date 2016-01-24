@@ -20,7 +20,6 @@ metadata {
         capability "Refresh"
         capability "Thermostat Setpoint"
         capability "Temperature Measurement"
-        attribute "waterTemp", "string"
         command "allOn"
         command "allOff"
         command "poolOff"
@@ -43,8 +42,6 @@ metadata {
 		command "aux7On"
 	}
 
-	
-    
 	preferences {
        	section("Select your controller") {
        		input "controllerIP", "text", title: "Controller hostname/IP", required: true
@@ -91,10 +88,10 @@ metadata {
 			state "off", label: '${currentValue}', action: "waterFeatureOn", icon: "st.Bath.bath13", backgroundColor: "#ffffff"
 			state "on", label: '${currentValue}', action: "waterFeatureOff", icon: "st.Bath.bath13", backgroundColor: "#79b821"
 		}
-        standardTile("spillway", "device.spillway", width: 2, height: 2, canChangeBackground: true) {
-        	state "unknown", label: '${currentValue}', action: "spillwayUnknown", icon: "st.Outdoor.outdoor5", backgroundColor: "#F2F200"
-			state "off", label: '${currentValue}', action: "spillwayOn", icon: "st.Outdoor.outdoor5", backgroundColor: "#ffffff"
-			state "on", label: '${currentValue}', action: "spillwayOff", icon: "st.Outdoor.outdoor5", backgroundColor: "#79b821"
+        standardTile("blower", "device.blower", width: 2, height: 2, canChangeBackground: true) {
+        	state "unknown", label: '${currentValue}', action: "blowerUnknown", icon: "st.Bath.bath13", backgroundColor: "#F2F200"
+			state "off", label: '${currentValue}', action: "blowerOn", icon: "st.Bath.bath13", backgroundColor: "#ffffff"
+			state "on", label: '${currentValue}', action: "blowerOff", icon: "st.Bath.bath13", backgroundColor: "#79b821"
 		}
         valueTile("waterTemp", "device.waterTemp", width: 2, height: 2, canChangeBackground: true) {
         	state("temperature", label:'${currentValue}°', icon: "st.Health & Wellness.health2",
@@ -123,8 +120,8 @@ metadata {
         standardTile("refresh", "command.refresh", inactiveLabel: false) {
         	state "default", label:'refresh', action:"refresh.refresh", icon:"st.secondary.refresh-icon"
     	}
-        main(["all"])
-		details(["all", "poolLight", "spaLight", "airTemp", "waterTemp", "pool", "spa", "cleaner", "waterFeature", "spillway", "refresh"])
+        main(["waterTemp"])
+		details(["poolLight", "spaLight", "airTemp", "waterTemp", "pool", "spa", "cleaner", "waterFeature", "spillway", "refresh"])
 	}
 }
 
@@ -151,21 +148,18 @@ def poll() {
 
 // parse events into attributes
 def parse(String description) {
-	log.debug "parse description: $description"
+	log.debug "Parse"
     def msg = parseLanMessage(description)
-    log.debug "Parse:"
-    log.debug  msg
-    def result = []
   	msg.data.keySet().each {
     	log.debug "${it} -> " + msg.data.get(it)
-        result << sendEvent(name: it, value: msg.data.get(it))
+        sendEvent(name: it, value: msg.data.get(it))
     }
-    return result
 }
 
 def setFeature(query) {
 	def host = getHostAddress()	
 	log.debug "Sending request to host: " + host
+    log.debug("Query: $query")
 	sendEvent(name: nfeatureNameame, value: "unknown")
     def poolAction = new physicalgraph.device.HubAction(
 		method: "GET",
