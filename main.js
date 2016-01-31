@@ -80,6 +80,30 @@ app.get('/harmony/off', function (req, res) {
     })
 })
 
+function harmonyTransportAction(device, action) {
+    harmony(harmonyHub).then(function(harmonyClient) {
+        return harmonyClient.getAvailableCommands()
+        .then(function (commands) {
+            device = commands.device.filter(function(group) {return group.label.toLowerCase() === device}).pop()
+            transport=device.controlGroup.filter(function (group) { return group.name.toLowerCase() === 'transportbasic' }).pop()
+            action=transport["function"].filter(function(group) {return group.name.toLowerCase() === action}).pop()
+            var encodedAction = action.action.replace(/\:/g, '::')
+            return harmonyClient.send('holdAction', 'action=' + encodedAction + ':status=press')
+        })
+        .finally(function () {
+            harmonyClient.end()
+        })
+    })
+}
+
+app.get('/harmony/tv/pause', function (req, res) {
+    res.status(200).send(harmonyTransportAction("tv", "pause"))
+})
+
+app.get('/harmony/tv/play', function (req, res) {
+    res.status(200).send(harmonyTransportAction("tv", "play"))
+})
+
 
 // Returns a JSON encoded body containing the status of all pool components
 // Example:
