@@ -1,3 +1,6 @@
+const fs = require('fs')
+var https = require('https');
+var http = require('http');
 var bodyParser = require('body-parser')
 var express = require('express')
 var request = require('request')
@@ -8,11 +11,20 @@ var pool_controller = require('./pool_controller')
 var harmony = require('harmonyhubjs-client')
 var logger = require('./log')
 var app = express()
-var port = 8081
+var host = '127.0.0.1'
+var http_port = 8081
+var https_port = 8082
 var harmonyHub = 'harmonyhub.usner.net'
 var tunerName = 'tuner.usner.net'
 var tuner = require('./yamaha_controller')
 tuner.connect(tunerName)
+
+const privateKey  = fs.readFileSync('musner-key.pem'); //Private Key for validation (server uses only)
+const certificate = fs.readFileSync('musner-cert.pem'); //Certificate, to provide to connecting host.
+const options = {
+  key: privateKey,
+  cert: certificate
+};
 
 //E8DE27067F01
 
@@ -80,7 +92,7 @@ app.get('/harmony/off', function (req, res) {
     })
 })
 
-function harmonyTransportAction(device, action) {
+function harmonyTransportAction(device, action, done) {
     harmony(harmonyHub).then(function(harmonyClient) {
         return harmonyClient.getAvailableCommands()
         .then(function (commands) {
@@ -92,16 +104,25 @@ function harmonyTransportAction(device, action) {
         })
         .finally(function () {
             harmonyClient.end()
+            done()
         })
     })
 }
 
+app.get('/harmony', function (req, res) {
+    console.log("/harmony/tv/pause")
+    res.status(200).send("awh yeah!")
+})
+
 app.get('/harmony/tv/pause', function (req, res) {
-    res.status(200).send(harmonyTransportAction("tv", "pause"))
+    console.log("/harmony/tv/pause")
+    //curl -v -s -k --key musner-key.pem -l https://192.168.1.2:8082/harmony
+    harmonyTransportAction("tv", "pause", function(d) { res.status(200).send("Paused") });
 })
 
 app.get('/harmony/tv/play', function (req, res) {
-    res.status(200).send(harmonyTransportAction("tv", "play"))
+    console.log("/harmony/tv/pause")
+    harmonyTransportAction("tv", "play", function(d) { res.status(200).send("Paused") });
 })
 
 
@@ -292,8 +313,18 @@ app.get('/patio/off', function(req, res) {
 })
 
 // the server entry point
-var server = app.listen(port, function () {
-    var host = '127.0.0.1'
-    var port = server.address().port
-    logger.info("Home-Device-Controller listening at http://%s:%s", host, port)
-})
+//var server = app.listen(port, function () {
+//    var host = '127.0.0.1'
+//    var port = server.address().port
+//    logger.info("Home-Device-Controller listening at http://%s:%s", host, port)
+//})
+
+app.listen = function() {
+  var server = http.createServer(this);
+  return server.listen.apply(server, arguments);
+}
+
+http.createServer(app).listen(http_port)
+logger.info("Home-Device-Controller listening at http://%s:%s", host, http_port)
+https.createServer(options, app).listen(https_port)
+logger.info("Home-Device-Controller listening at http://%s:%s", host, https_port)
