@@ -1,4 +1,3 @@
-const key = "diV6_8ZybVoRS4Czv2JrkM"
 const fs = require('fs')
 var https = require('https');
 var http = require('http');
@@ -19,12 +18,12 @@ var harmonyHub = 'harmonyhub.usner.net'
 var tunerName = 'tuner.usner.net'
 var tuner = require('./yamaha_controller')
 tuner.connect(tunerName)
-
-
+var key = "diV6_8ZybVoRS4Czv2JrkM"
+const privateKey  = fs.readFileSync('musner-key.pem'); //Private Key for validation (server uses only)
+const certificate = fs.readFileSync('musner-cert.pem'); //Certificate, to provide to connecting host.
 const options = {
-  ca: fs.readFileSync('startssl/usner.name/ca-certs.crt'),
-  key: fs.readFileSync('startssl/usner.name/private.key'),
-  cert: fs.readFileSync('startssl/usner.name/2_main.usner.name.crt'),
+  key: privateKey,
+  cert: certificate
 };
 
 //E8DE27067F01
@@ -110,25 +109,14 @@ function harmonyTransportAction(device, action, done) {
     })
 }
 
-app.get('/harmony/tv/pause/'+key, function (req, res) {
+app.get('/harmony/tv/pause/' + key, function (req, res) {
     console.log("/harmony/tv/pause")
     //curl -v -s -k --key musner-key.pem -l https://192.168.1.2:8082/harmony
     harmonyTransportAction("tv", "pause", function(d) { res.status(200).send("Paused") });
 })
 
-app.get('/harmony/tv/pause', function (req, res) {
+app.get('/harmony/tv/play/' + key, function (req, res) {
     console.log("/harmony/tv/pause")
-    //curl -v -s -k --key musner-key.pem -l https://192.168.1.2:8082/harmony
-    harmonyTransportAction("tv", "pause", function(d) { res.status(200).send("Paused") });
-})
-
-app.get('/harmony/tv/play', function (req, res) {
-    console.log("/harmony/tv/pause")
-    harmonyTransportAction("tv", "play", function(d) { res.status(200).send("Paused") });
-})
-
-app.get('/harmony/tv/play/'+key, function (req, res) {
-    console.log("/harmony/tv/play")
     harmonyTransportAction("tv", "play", function(d) { res.status(200).send("Paused") });
 })
 
